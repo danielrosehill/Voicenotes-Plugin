@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "voicenotes": {
+      "type": "http",
+      "url": "https://api.voicenotes.com/mcp"
+    }
+  }
+}

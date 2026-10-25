@@ -1,0 +1,12 @@
+{
+  "name": "voicenotes",
+  "version": "0.1.0",
+  "description": "Voicenotes.com: search notes, read transcripts, list by date or tag, create text notes. Bundles the official Voicenotes MCP.",
+  "author": {
+    "name": "Daniel Rosehill",
+    "url": "https://github.com/danielrosehill"
+  },
+  "repository": "https://github.com/danielrosehill/Voicenotes-Plugin",
+  "license": "MIT",
+  "keywords": ["voicenotes", "voice-notes", "transcripts", "notes", "mcp"]
+}
