@@ -1,6 +1,6 @@
 # Roadmap and findings
 
-Status: **v0.1.0 is an early placeholder** (2026-10-25). It wraps the four tools of the official Voicenotes MCP and nothing more.
+Status: **early placeholder.** v0.1.0 (2026-10-25) wrapped the four official MCP tools. v0.2.0 (2026-10-25) adds the unofficial `export-notes` skill, ported from a private exporter whose method was confirmed end-to-end on 2026-04-26 (IndexedDB cache dump for transcripts; `GET /api/recordings/{id}/signed-url` with the unwrapped `localStorage.auth_token` for audio).
 
 ## Findings (2026-10-25)
 
