@@ -1,6 +1,6 @@
 # Voicenotes Plugin
 
-![Unofficial](https://img.shields.io/badge/status-UNOFFICIAL-red) ![Not affiliated with Voicenotes](https://img.shields.io/badge/not%20affiliated-Voicenotes-lightgrey) ![Early release](https://img.shields.io/badge/version-0.3.0%20early-orange)
+![Unofficial](https://img.shields.io/badge/status-UNOFFICIAL-red) ![Not affiliated with Voicenotes](https://img.shields.io/badge/not%20affiliated-Voicenotes-lightgrey) ![Early release](https://img.shields.io/badge/version-0.4.0%20early-orange)
 
 > [!WARNING]
 > **Unofficial, community plugin. Not made, endorsed or supported by Voicenotes.** The core skills use Voicenotes' official MCP server. Skills marked *unofficial* below go through the web app's private API and local cache, which Voicenotes does not document and can change at any time.
@@ -20,7 +20,9 @@ Official MCP:
 
 Unofficial (private API / browser cache):
 
-- `export-notes`: bulk export of the whole account, transcripts to Markdown plus original audio. Scripts in `scripts/`; needs a signed-in voicenotes.com tab and, for audio, the web app's own token.
+- `export-text`: transcripts only, no audio, for all notes or chosen tags or notes; one file per note, one combined file, or JSON.
+- `export-date-range`: every note between two dates, text by default, audio optional.
+- `export-notes`: full archive of the whole account with all original audio (for complete backups of large accounts).
 - `edit-tags`: add, remove or replace tags on existing notes; list all tags.
 - `import-audio`: upload an audio file to be transcribed as a new note (Voicenotes as a transcription service).
 

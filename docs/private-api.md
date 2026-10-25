@@ -12,7 +12,7 @@ The endpoints the voicenotes.com web app calls, as used by this plugin's unoffic
 
 | Call | Body | Result | Verified |
 |---|---|---|---|
-| `GET /recordings?page=N` | | `{data:[…], links:{next}}`, 10 per page, no total | yes |
+| `GET /recordings?page=N` | | `{data:[…], links:{next}}`, 10 per page, no total. Newest first (by `created_at` and `recorded_at`). Items carry the full transcript and `creations`, same as the single-note call. Date query parameters (`from`/`to`, `date_from`/`date_to`) are ignored. | yes |
 | `GET /recordings/{id}` | | `{data:{…}}` full note, `tags` = array of tag objects | yes |
 | `PATCH /recordings/{id}` | `{"tags":["Name", …]}` | 200, the updated note (not wrapped in `data`). **Full replace**; `[]` clears. Title and transcript unchanged. | yes, add / replace / clear |
 | `GET /tags` | | array of `{id, name, keywords, is_pinned, emoji, recordings_count, …}` | yes |

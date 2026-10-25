@@ -1,11 +1,13 @@
 ---
 name: export-notes
-description: Bulk-export or back up a whole Voicenotes account, transcripts and original audio, to Markdown notes, a catalog and audio files. Unofficial.
+description: Full archive of an entire Voicenotes account, every transcript plus all original audio, for a complete backup. Unofficial.
 ---
 
 # Export a Voicenotes account (unofficial)
 
 > **Unofficial.** Uses the voicenotes.com web app's own cache and private API, not a documented or supported interface. It can break whenever Voicenotes changes their app. Method confirmed end-to-end on a 6,875-note account on 2026-04-26.
+
+For most exports use `export-text` (transcripts only) or `export-date-range` (a window of dates). This skill is for a complete archive of a large account, audio included.
 
 Two independent halves:
 
