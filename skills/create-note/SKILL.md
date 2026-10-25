@@ -20,5 +20,5 @@ Add a text note to the user's Voicenotes account through the bundled `voicenotes
 
 ## Notes
 
-- This writes to the user's account. It creates a text note only: the official MCP has no audio upload, and no editing or deleting of existing notes or their tags.
+- This writes to the user's account. It creates a text note only. To change tags later use `edit-tags`; to add audio use `import-audio` (both unofficial).
 - Connection and sign-in: see `search-notes`.

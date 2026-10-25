@@ -1,7 +1,7 @@
 {
   "name": "voicenotes",
-  "version": "0.2.0",
-  "description": "Voicenotes.com: search notes, read transcripts, list by date or tag, create notes (official MCP); unofficial bulk export with audio.",
+  "version": "0.3.0",
+  "description": "Voicenotes.com: search, read transcripts, list, create notes (official MCP); unofficial tag editing, audio import, bulk export.",
   "author": {
     "name": "Daniel Rosehill",
     "url": "https://github.com/danielrosehill"
@@ -15,6 +15,9 @@
     "notes",
     "mcp",
     "export",
-    "backup"
+    "backup",
+    "tags",
+    "transcription",
+    "import"
   ]
 }

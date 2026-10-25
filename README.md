@@ -1,13 +1,13 @@
 # Voicenotes Plugin
 
-![Unofficial](https://img.shields.io/badge/status-UNOFFICIAL-red) ![Not affiliated with Voicenotes](https://img.shields.io/badge/not%20affiliated-Voicenotes-lightgrey) ![Early placeholder](https://img.shields.io/badge/version-0.2.0%20early-orange)
+![Unofficial](https://img.shields.io/badge/status-UNOFFICIAL-red) ![Not affiliated with Voicenotes](https://img.shields.io/badge/not%20affiliated-Voicenotes-lightgrey) ![Early release](https://img.shields.io/badge/version-0.3.0%20early-orange)
 
 > [!WARNING]
 > **Unofficial, community plugin. Not made, endorsed or supported by Voicenotes.** The core skills use Voicenotes' official MCP server. Skills marked *unofficial* below go through the web app's private API and local cache, which Voicenotes does not document and can change at any time.
 
-Use your [Voicenotes](https://voicenotes.com) notes from Claude Code: search them, read full transcripts, list them by date or tag, and add text notes.
+Use your [Voicenotes](https://voicenotes.com) notes from Claude Code: search them, read full transcripts, list them by date or tag, add text notes, edit tags, import audio for transcription and export everything.
 
-> **Early placeholder.** Tag editing and audio import are not covered yet; see [docs/roadmap.md](docs/roadmap.md).
+> **Early release.** Unofficial skills replay calls the voicenotes.com web app makes; they were verified on 2026-10-25 and may break. Endpoint notes: [docs/private-api.md](docs/private-api.md). Plans: [docs/roadmap.md](docs/roadmap.md).
 
 ## Skills
 
@@ -21,6 +21,10 @@ Official MCP:
 Unofficial (private API / browser cache):
 
 - `export-notes`: bulk export of the whole account, transcripts to Markdown plus original audio. Scripts in `scripts/`; needs a signed-in voicenotes.com tab and, for audio, the web app's own token.
+- `edit-tags`: add, remove or replace tags on existing notes; list all tags.
+- `import-audio`: upload an audio file to be transcribed as a new note (Voicenotes as a transcription service).
+
+The unofficial skills need the web app's token: in the DevTools console on a signed-in `https://voicenotes.com/app` tab run `copy(JSON.parse(localStorage.auth_token))`, then `export VOICENOTES_TOKEN='<paste>'`. Treat it like a password.
 
 ## MCP server
 

@@ -1,6 +1,6 @@
 # Roadmap and findings
 
-Status: **early placeholder.** v0.1.0 (2026-10-25) wrapped the four official MCP tools. v0.2.0 (2026-10-25) adds the unofficial `export-notes` skill, ported from a private exporter whose method was confirmed end-to-end on 2026-04-26 (IndexedDB cache dump for transcripts; `GET /api/recordings/{id}/signed-url` with the unwrapped `localStorage.auth_token` for audio).
+Status: **early release.** v0.1.0 (2026-10-25) wrapped the four official MCP tools. v0.2.0 (2026-10-25) adds the unofficial `export-notes` skill, ported from a private exporter whose method was confirmed end-to-end on 2026-04-26 (IndexedDB cache dump for transcripts; `GET /api/recordings/{id}/signed-url` with the unwrapped `localStorage.auth_token` for audio). v0.3.0 (2026-10-25) adds unofficial `edit-tags` and `import-audio`, both verified live.
 
 ## Findings (2026-10-25)
 
@@ -11,13 +11,13 @@ Confirmed:
 - No Claude Code plugin for Voicenotes existed (GitHub repo and code search, the Daniel Rosehill marketplaces and skill catalogue, web search).
 - Voicenotes publishes an official skill for OpenClaw (`voicenotes-official` on ClawHub, mirrored in e.g. `nordeim/openclaw-curated-skills`). It calls a separate key-authenticated REST surface, `https://api.voicenotes.com/api/integrations/open-claw/...` (`search/semantic`, `recordings`, `recordings/{uuid}`, `recordings/new`), with the same four operations. Not used here: it needs an API key from an OpenClaw integration and its setup targets OpenClaw.
 
-Not yet verified:
+Verified 2026-10-25 (v0.3.0), details in `private-api.md`:
 
-- **Tag and title editing.** Not in the official MCP or the OpenClaw API. A community server (`mayankbohradev/voicenotes-mcp`) uses the web app's private API: `PATCH /api/recordings/{id}` with title and/or tags (tags replace the whole set), plus `GET/POST/PATCH/DELETE /api/tags`. Auth there is the web app's Bearer token: `JSON.parse(localStorage.auth_token)` on a logged-in voicenotes.com tab (the raw localStorage value is JSON-quoted and gives 401). Untested by this plugin.
-- **Audio upload / using Voicenotes as a transcription service.** No documented route. The app has Settings → Import (MP3, WAV, M4A, up to 50 MB; https://help.voicenotes.com/en/articles/15391500-how-to-import-files-into-voicenotes), but its upload call is undocumented.
+- **Tag editing**: `PATCH /recordings/{id}` `{"tags":[names]}`, full replace. Tested add, replace and clear on a scratch note.
+- **Audio import**: signed-url → S3 PUT → `imports/new` → poll. Tested with a 3 s WAV, transcribed in under 10 s.
 
 ## Next
 
-1. `edit-tags` skill: verify `PATCH /api/recordings/{id}` against a real account in a browser session, then decide whether a private-API skill belongs in a public plugin (it would be marked unofficial).
-2. Capture the Settings → Import network calls in a browser session to see whether audio import can be scripted.
-3. Record the live MCP tool input schemas in `reference/` once connected.
+1. Check whether `PATCH` with an unknown tag name creates the tag.
+2. Title and transcript editing (`updateNote`, `transcript/update`) if wanted.
+3. Record the official MCP tool input schemas in `reference/` once connected.
