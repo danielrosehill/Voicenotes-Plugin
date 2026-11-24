@@ -71,10 +71,10 @@ def run(tmp_path):
     nobin = tmp_path / "bin"  # no ffprobe: the fixture audio is noise
     nobin.mkdir()
 
-    def go(*args, token="good"):
+    def go(*args, token="good", stdin=None, base=("--token-stdin",)):
         env = {"PATH": str(nobin), "VOICENOTES_API": f"http://127.0.0.1:{srv.server_port}", "VOICENOTES_BACKOFF": "0.01"}
-        r = subprocess.run([sys.executable, str(SCRIPT), "--out", str(tmp_path / "o"), "--token-stdin", *args],
-                           input=token + "\n", env=env, capture_output=True, text=True, timeout=60)
+        r = subprocess.run([sys.executable, str(SCRIPT), "--out", str(tmp_path / "o"), *base, *args],
+                           input=token + "\n" if stdin is None else stdin.replace("BASE", env["VOICENOTES_API"]), env=env, capture_output=True, text=True, timeout=60)
         rep = tmp_path / "o/report.json"
         return r, json.loads(rep.read_text()) if rep.exists() else None, tmp_path / "o"
     yield go
@@ -125,3 +125,20 @@ def test_dump_adds_notes_and_keeps_old_ones(run, tmp_path):
     r, rep, _ = run("--dump", str(d))
     assert r.returncode == 0 and rep["notes"] == N + 1
     assert run()[1]["notes"] == N + 1
+
+
+def test_browser_mode_needs_no_token(run, tmp_path):
+    lst = tmp_path / "l.json"
+    lst.write_text(json.dumps({i: {"recording_id": i, "recorded_at": i, "firebase_token": "SECRET"} for i in BODY}))
+    assert run("--listing", str(lst), base=())[1]["audio"] == {"pending": N}
+    S.flaky = False
+    links = [{"rid": i, "status": 404 if i == "r005" else 200, "url": f"BASE/file/{i}.mp3?sig=1"} for i in BODY]
+    links[7]["status"] = 500
+    r, rep, _ = run("--links-stdin", base=(), stdin=json.dumps(links[:30]))
+    assert r.returncode == 1 and rep["audio"] == {"ok": 28, "no_audio": 1, "failed": 1, "pending": 13}
+    pend = json.loads(run("--pending", base=())[0].stdout)
+    assert len(pend) == 14 and "r007" in pend
+    links[7]["status"] = 200
+    r, rep, out = run("--links-stdin", base=(), stdin=json.dumps([x for x in links if x["rid"] in pend]))
+    assert r.returncode == 0 and rep["complete"]
+    assert b"SECRET" not in (out / "notes.jsonl").read_bytes()

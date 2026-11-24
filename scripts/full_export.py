@@ -8,6 +8,11 @@
   full_export.py --out DIR [--dump voicenotes-indexeddb-dump.json] [--limit N] [--workers 6]
   full_export.py --out DIR --verify        # offline re-check of an existing export
 
+Without a token (a logged-in browser page makes the API calls instead):
+  full_export.py --out DIR --listing notes.json            # {recording_id: note} or [note, ...]
+  full_export.py --out DIR --links-stdin < links.json      # [{"rid", "status", "url"}], repeat per batch
+  full_export.py --out DIR --pending                       # ids still to fetch, as JSON
+
 Token: VOICENOTES_TOKEN, or the first line of stdin with --token-stdin. It is never written to disk.
 
 How it stays reliable
@@ -74,6 +79,9 @@ def session() -> requests.Session:
     if not hasattr(_local, "s"):
         _local.s = requests.Session()
     return _local.s
+
+
+LINKS: dict[str, dict] = {}  # --links-stdin: rid -> {status, url}
 
 
 def api(path: str, token: str) -> requests.Response:
@@ -189,10 +197,16 @@ def fetch(rid: str, token: str, adir: Path) -> dict:
     for n in range(ATTEMPTS):
         if STOP.is_set():
             raise Stopped
-        r = api(f"/recordings/{rid}/signed-url", token)
-        if r.status_code == 404:
+        if rid in LINKS:
+            code, url = LINKS[rid].get("status"), LINKS[rid].get("url")
+            if code not in (200, 404):
+                return {"status": "failed", "error": f"link request: HTTP {code}"}
+        else:
+            r = api(f"/recordings/{rid}/signed-url", token)
+            code = r.status_code
+            url = r.json().get("url") if code == 200 else None
+        if code == 404:
             return {"status": "no_audio", "error": "API 404"}
-        url = r.json().get("url")
         if not url:
             return {"status": "no_audio", "error": "API returned no url"}
         ext = Path(urlparse(url).path).suffix.lower()
@@ -203,6 +217,8 @@ def fetch(rid: str, token: str, adir: Path) -> dict:
             with session().get(url, stream=True, timeout=(30, 120), headers={"Accept-Encoding": "identity"}) as g:
                 if g.status_code == 404:
                     return {"status": "missing", "error": "link given, file gone (storage 404)"}
+                if g.status_code == 403 and rid in LINKS:
+                    return {"status": "failed", "error": "link expired or refused (403)"}
                 if g.status_code != 200:
                     raise RuntimeError(f"storage HTTP {g.status_code}")
                 want = g.headers.get("Content-Length")
@@ -303,23 +319,41 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0, help="newest N notes only (trial run)")
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--token-stdin", action="store_true")
+    ap.add_argument("--listing", type=Path)
+    ap.add_argument("--links-stdin", action="store_true")
+    ap.add_argument("--no-verify", action="store_true", help="with --links-stdin: skip the closing re-hash of everything")
+    ap.add_argument("--pending", action="store_true")
     ap.add_argument("--verify", action="store_true")
     ap.add_argument("--recheck-missing", action="store_true", help="ask again about notes recorded as having no audio")
     a = ap.parse_args()
     os.umask(0o077)
     (a.out / "audio").mkdir(parents=True, exist_ok=True)
     db = open_db(a.out)
-    if not a.verify:
+    if a.pending:
+        ok = {r[0] for r in db.execute("SELECT rid FROM audio WHERE status IN ('ok','no_audio')")}
+        print(json.dumps([r for r in read_notes(a.out) if r not in ok]))
+        return 0
+    if a.links_stdin:
+        LINKS.update({x["rid"]: x for x in json.load(sys.stdin)})
+    token = ""
+    if not a.verify and not a.listing and not a.links_stdin:
         token = (sys.stdin.readline() if a.token_stdin else os.environ.get("VOICENOTES_TOKEN", "")).strip()
         if not token:
             print("no token (VOICENOTES_TOKEN or --token-stdin)", file=sys.stderr)
             return 2
+    if not a.verify:
         for s in (signal.SIGINT, signal.SIGTERM):
             signal.signal(s, lambda *_: STOP.set())
         for p in (a.out / "audio").glob("*.part"):
             p.unlink()
         try:
-            listed = list_notes(token, a.limit)
+            if a.links_stdin:
+                listed = {}
+            elif a.listing:
+                raw = json.loads(a.listing.read_text())
+                listed = {rid_of(r): scrub(r) for r in (raw.values() if isinstance(raw, dict) else raw)}
+            else:
+                listed = list_notes(token, a.limit)
             notes = {**read_notes(a.out), **listed}  # never drop a note an earlier run saw
             if a.dump and not a.limit:
                 extra = {k: v for k, v in load_dump(a.dump).items() if k not in notes}
@@ -329,6 +363,10 @@ def main() -> int:
             db.executemany("INSERT OR IGNORE INTO audio(rid) VALUES (?)", [(k,) for k in notes])
             redo = "('ok')" if a.recheck_missing else "('ok','no_audio')"
             todo = [r[0] for r in db.execute(f"SELECT rid FROM audio WHERE status NOT IN {redo}") if r[0] in notes]
+            if a.links_stdin:
+                todo = [r for r in todo if r in LINKS]
+            elif a.listing:
+                todo = []
             print(f"{len(notes)} notes, {len(todo)} audio files to fetch", flush=True)
             done, t0 = 0, time.time()
 
@@ -354,6 +392,9 @@ def main() -> int:
                 list(ex.map(one, todo))
         except Stopped:
             pass
+    if a.no_verify:
+        print(json.dumps(dict(db.execute("SELECT status, COUNT(*) FROM audio GROUP BY 1").fetchall())))
+        return 130 if STOP.is_set() else 0
     rep = verify(a.out, db)
     print(json.dumps({k: v if not isinstance(v, list) else len(v) for k, v in rep.items()}))
     if BAD_TOKEN.is_set():

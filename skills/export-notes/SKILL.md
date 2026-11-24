@@ -22,6 +22,7 @@ Script: `scripts/full_export.py` (`uv run --script`). Resumable and verified: re
 3. **Trial**, newest 20 notes, in a scratch directory: `uv run --script scripts/full_export.py --out <scratch> --limit 20`. Read `report.json`.
 4. **Full run**: `uv run --script scripts/full_export.py --out <out> [--dump <dump>]`. Exit 0 = complete and verified; 1 = some failed, run again; 3 = token rejected, get a new one and run again.
 5. Report from `report.json`: notes, audio counts by status, `problems`, `duration_mismatches`. `no_audio` means the API said 404 (typed or imported notes); `missing` means a link existed but the file is gone.
+   **No token option** (the login stays in the browser): `full_export.py --listing` with the cache dump's records, `--pending > ids.json`, start `scripts/browser_bridge.py`, then run `scripts/browser_bridge.js` in the signed-in tab. Firefox asks to let voicenotes.com reach apps on this device: the user decides, never click it for them. The API rate-limits (429) at about 8 parallel calls (seen 2026-11-24); the script makes one call at a time, about 58 a minute. When it finishes, merge `WORK/pages/*.json` with `--listing`, then `--pending` and repeat if any are left.
 6. Later integrity check, offline: `full_export.py --out <out> --verify`.
 
 ## Output layout
@@ -43,6 +44,7 @@ Writes only under the output directory the user chose, plus the dump file in the
 
 - The dump and archive are the full account: transcripts, AI "creations", subnotes, tags. Cache entries also carry a per-recording `firebase_token` field; keep the raw dump with the rest of the private export.
 - An older run of `voicenotes_export.py` that was interrupted left 1,368 of 6,875 notes without audio and reported nothing afterwards; `full_export.py` replaces it.
-- Signed S3 URLs expire in about 5 minutes; the script fetches each one just before its download. Don't batch them.
+- `transcript` holds the raw transcript; transformations are separate, in `creations` (only in the live API, not in the cache). No endpoint for the pre-edit text of a hand-edited transcript was found.
+- Signed S3 URLs expire in about 11 minutes (2026-11-24; about 5 earlier); the script fetches each one just before its download. Don't batch them.
 - A transcript that looks stale in the dump is stale in the app's cache. Opening the note in the app refreshes it; then dump again.
 - Imported files (PDFs, documents) are not recordings and have no audio.
