@@ -9,48 +9,30 @@ description: Full archive of an entire Voicenotes account, every transcript plus
 
 For most exports use `export-text` (transcripts only) or `export-date-range` (a window of dates). This skill is for a complete archive of a large account, audio included.
 
-Two independent halves:
-
-1. **Transcripts and metadata**: read from the web app's IndexedDB cache in the browser. No auth, no network, about 10 seconds.
-2. **Audio**: pulled through the private API (`GET /api/recordings/{id}/signed-url`, an S3 link valid about 5 minutes), with the web app's own Bearer token.
-
-Scripts live in the plugin's `scripts/` folder: `dump_indexeddb.js`, `build_archive.py`, `voicenotes_export.py`, `link_audio.py`. The Python ones run with `uv run --script` (or `python3` with `requests` installed).
+Script: `scripts/full_export.py` (`uv run --script`). Resumable and verified: reads every page of the API listing, downloads each note's original audio, checks size and media type (and duration, with `ffprobe` installed), then re-hashes everything into `report.json`. Tests: `tests/test_full_export.py`.
 
 ## Inputs
 
-- Output directory (ask; default `./voicenotes-export`).
-- Whether to include audio (the audio is far larger than the text; check free space first).
+- Output directory, on a disk with room for the audio (one 5,500-note account: 8.9 GB). Prefer an always-on machine.
 
 ## Steps
 
-1. **Dump the cache.** The user must be signed in at `https://voicenotes.com/app` and the app must have loaded their notes (scrolling the list once fills the cache). Run `scripts/dump_indexeddb.js` in that tab: with Claude in Chrome, pass the file's contents to `javascript_tool`; otherwise the user pastes it into the DevTools console. It downloads `voicenotes-indexeddb-dump.json` to the browser's download folder. Check the console line `built payload: N records` against the note count the app shows.
-2. **Build the archive:**
-   ```bash
-   uv run --script scripts/build_archive.py --dump <download-folder>/voicenotes-indexeddb-dump.json --out <out>
-   ```
-   Writes `<out>/catalog.json` and `<out>/notes/YYYY-MM-DD__<id>__<slug>.md` (frontmatter + transcript). Stop here if the user does not want audio.
-3. **Get the token (user does this).** In the DevTools console on the app tab: `copy(JSON.parse(localStorage.auth_token))`, then in the shell `export VOICENOTES_TOKEN='<paste>'`. The `JSON.parse` matters: the stored value is wrapped in quotes and the quoted form gets `401 User is Unauthenticated.` Claude in Chrome masks token-like values, so have the user copy it rather than reading it through the browser tools.
-4. **Pull audio**, dry run first:
-   ```bash
-   uv run --script scripts/voicenotes_export.py --out <out> --from-dump <dump> --dry-run
-   uv run --script scripts/voicenotes_export.py --out <out> --from-dump <dump>
-   ```
-   Parallel (8 workers default, about 150 recordings a minute), resumable through `<out>/state.json`: rerun the same command after an interruption. `--from-dump` skips the slow API listing. Without it the script walks the paginated `/api/recordings` (`links.next` until null; there is no total).
-5. **Link audio to notes:**
-   ```bash
-   uv run --script scripts/link_audio.py --out <out>
-   ```
-   Adds `audio_file` to each note's frontmatter and to `catalog.json`. Idempotent.
-6. Report: notes written, audio files downloaded, failures listed in `state.json`, total size.
+1. **Optional cache dump.** On a signed-in `https://voicenotes.com/app` tab, run `scripts/dump_indexeddb.js` (Claude in Chrome `javascript_tool`, or the DevTools console). It needs no token and works as a text-only export by itself (`build_archive.py`). Passed as `--dump`, it adds notes the API listing misses.
+2. **Token (the user does this).** DevTools console on the app tab: `copy(JSON.parse(localStorage.auth_token))`. Pass it as `VOICENOTES_TOKEN` or on stdin with `--token-stdin`. It is never written to disk.
+3. **Trial**, newest 20 notes, in a scratch directory: `uv run --script scripts/full_export.py --out <scratch> --limit 20`. Read `report.json`.
+4. **Full run**: `uv run --script scripts/full_export.py --out <out> [--dump <dump>]`. Exit 0 = complete and verified; 1 = some failed, run again; 3 = token rejected, get a new one and run again.
+5. Report from `report.json`: notes, audio counts by status, `problems`, `duration_mismatches`. `no_audio` means the API said 404 (typed or imported notes); `missing` means a link existed but the file is gone.
+6. Later integrity check, offline: `full_export.py --out <out> --verify`.
 
 ## Output layout
 
 ```
 <out>/
-├── catalog.json        # one entry per recording
-├── notes/              # YYYY-MM-DD__<recording_id>__<slug>.md
-├── audio/              # <recording_id>.<ext>, original audio
-└── state.json          # resume state for the audio pull
+├── notes.jsonl      # full note records, oldest first (firebase_token removed)
+├── audio/           # <recording_id>.<ext>, original audio
+├── manifest.jsonl   # note -> audio file, bytes, sha256, seconds
+├── report.json      # verification result
+└── state.db         # resume state
 ```
 
 ## Data storage
@@ -60,6 +42,7 @@ Writes only under the output directory the user chose, plus the dump file in the
 ## Notes
 
 - The dump and archive are the full account: transcripts, AI "creations", subnotes, tags. Cache entries also carry a per-recording `firebase_token` field; keep the raw dump with the rest of the private export.
+- An older run of `voicenotes_export.py` that was interrupted left 1,368 of 6,875 notes without audio and reported nothing afterwards; `full_export.py` replaces it.
 - Signed S3 URLs expire in about 5 minutes; the script fetches each one just before its download. Don't batch them.
 - A transcript that looks stale in the dump is stale in the app's cache. Opening the note in the app refreshes it; then dump again.
 - Imported files (PDFs, documents) are not recordings and have no audio.

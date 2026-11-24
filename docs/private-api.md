@@ -35,3 +35,5 @@ Limits enforced by the web app before step 1: audio ≤ 100 MB, other file types
 - Recording upload as a native voice note: `GET /recordings/signed-url` → `PUT` (`audio/mpeg`) → `POST /recordings/new` multipart with `upload_id`, `duration`, `recording_identifier`, `device_info`, `recording_type`.
 - `GET /recordings/{id}/signed-url`: download link for a note's audio (used by `export-notes`).
 - `POST /recordings/{id}/transcript/update`, `PATCH /recordings/{id}/star`, `POST /recordings/{id}/move`.
+
+`GET /recordings/{id}/signed-url` returned 200 with `{url, expiry_time}` (S3, `.mp3`, range requests work) on 2026-11-24 for every note sampled from 2025-01 to 2026-06 whose result could be read.
